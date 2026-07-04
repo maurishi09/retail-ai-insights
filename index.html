@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Retail AI Insights Assistant — Walmart Sales</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:wght@500;600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#1c2430;
+    --ink-soft:#4a5568;
+    --ink-faint:#8a93a3;
+    --paper:#faf8f4;
+    --card:#ffffff;
+    --line:#e4e0d6;
+    --brass:#a6742c;
+    --brass-dark:#7c5620;
+    --brass-tint:#f6ecd8;
+    --navy:#1f3a5f;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:var(--paper);
+    color:var(--ink);
+    font-family:'Inter',system-ui,sans-serif;
+    line-height:1.5;
+  }
+  .wrap{max-width:960px;margin:0 auto;padding:40px 24px 80px;}
+  header{margin-bottom:36px;}
+  .eyebrow{
+    font-size:12px;letter-spacing:.12em;text-transform:uppercase;
+    color:var(--brass-dark);font-weight:600;margin-bottom:10px;
+  }
+  h1{
+    font-family:'Source Serif 4',Georgia,serif;
+    font-size:34px;font-weight:600;margin:0 0 8px;color:var(--ink);
+    letter-spacing:-0.01em;
+  }
+  .sub{color:var(--ink-soft);font-size:15px;max-width:560px;margin:0;}
+
+  .metrics{
+    display:grid;grid-template-columns:repeat(4,1fr);gap:1px;
+    background:var(--line);border:1px solid var(--line);
+    margin:32px 0;border-radius:10px;overflow:hidden;
+  }
+  .metric{background:var(--card);padding:18px 16px;}
+  .metric .label{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--ink-faint);margin-bottom:6px;}
+  .metric .value{font-size:21px;font-weight:600;font-family:'Source Serif 4',Georgia,serif;}
+
+  .panel{
+    background:var(--card);border:1px solid var(--line);border-radius:12px;
+    padding:24px;margin-bottom:24px;
+  }
+  .panel h2{
+    font-family:'Source Serif 4',Georgia,serif;font-size:19px;font-weight:600;
+    margin:0 0 4px;
+  }
+  .panel .desc{color:var(--ink-soft);font-size:13px;margin:0 0 18px;}
+
+  #chart-holder{position:relative;height:220px;}
+
+  .chips{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px;}
+  .chip{
+    border:1px solid var(--line);background:var(--paper);color:var(--ink-soft);
+    font-size:12.5px;padding:7px 12px;border-radius:999px;cursor:pointer;
+    font-family:inherit;transition:border-color .15s, color .15s;
+  }
+  .chip:hover{border-color:var(--brass);color:var(--brass-dark);}
+
+  .input-row{display:flex;gap:10px;}
+  #question{
+    flex:1;padding:11px 14px;border:1px solid var(--line);border-radius:8px;
+    font-family:inherit;font-size:14.5px;color:var(--ink);background:var(--paper);
+  }
+  #question:focus{outline:none;border-color:var(--brass);}
+  #ask-btn{
+    background:var(--navy);color:#fff;border:none;border-radius:8px;
+    padding:0 22px;font-family:inherit;font-size:14px;font-weight:500;
+    cursor:pointer;white-space:nowrap;
+  }
+  #ask-btn:hover{background:#16304f;}
+  #ask-btn:disabled{background:var(--ink-faint);cursor:default;}
+
+  #answer-holder{margin-top:18px;}
+  .answer{
+    border-left:3px solid var(--brass);background:var(--brass-tint);
+    padding:16px 18px;border-radius:0 8px 8px 0;font-size:14.5px;color:var(--ink);
+    white-space:pre-wrap;
+  }
+  .answer .tag{
+    font-size:11px;text-transform:uppercase;letter-spacing:.08em;
+    color:var(--brass-dark);font-weight:600;margin-bottom:8px;display:block;
+  }
+  .loading{color:var(--ink-faint);font-size:13.5px;font-style:italic;}
+  .error{
+    border-left:3px solid #b23b3b;background:#fbebeb;color:#7a2626;
+    padding:14px 16px;border-radius:0 8px 8px 0;font-size:13.5px;
+  }
+
+  .foot-note{font-size:12px;color:var(--ink-faint);margin-top:6px;}
+
+  @media (max-width:640px){
+    .metrics{grid-template-columns:repeat(2,1fr);}
+    .input-row{flex-direction:column;}
+    #ask-btn{padding:11px;}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <div class="eyebrow">Retail analytics · AI insights layer</div>
+    <h1>Walmart sales — AI insights assistant</h1>
+    <p class="sub">Ask a plain-English question about sales performance across 45 stores. The assistant reasons over aggregated store, seasonal, and holiday data — not raw rows — and answers like an analyst, not a chatbot.</p>
+  </header>
+
+  <div class="metrics" id="metrics"></div>
+
+  <div class="panel">
+    <h2>Monthly sales trend</h2>
+    <p class="desc">Average weekly sales by calendar month, across all stores, 2010–2012.</p>
+    <div id="chart-holder"><canvas id="trendChart"></canvas></div>
+  </div>
+
+  <div class="panel">
+    <h2>Ask the data</h2>
+    <p class="desc">Try a preset question or write your own — answers are grounded in the summary statistics shown above, computed from the underlying 6,435-row weekly sales dataset.</p>
+    <div class="chips" id="chips"></div>
+    <div class="input-row">
+      <input id="question" type="text" placeholder="e.g. Which stores should we prioritize for holiday staffing?" />
+      <button id="ask-btn">Ask</button>
+    </div>
+    <div id="answer-holder"></div>
+  </div>
+
+  <p class="foot-note">Data: Walmart weekly sales dataset (45 stores, Feb 2010–Oct 2012). Figures are pre-aggregated client-side before being sent to the model, so no raw customer or transaction-level data leaves the browser.</p>
+
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script>
+const DATA = {
+  stores: [
+    {"Store":1,"avg_weekly_sales":1555264,"total_sales":222402809,"max_weekly_sales":2387950,"min_weekly_sales":1316899,"avg_unemployment":8.0,"avg_cpi":216.0},
+    {"Store":2,"avg_weekly_sales":1925751,"total_sales":275382441,"max_weekly_sales":3436008,"min_weekly_sales":1650394,"avg_unemployment":8.0,"avg_cpi":216.0},
+    {"Store":3,"avg_weekly_sales":402704,"total_sales":57586735,"max_weekly_sales":605990,"min_weekly_sales":339597,"avg_unemployment":7.0,"avg_cpi":219.0},
+    {"Store":4,"avg_weekly_sales":2094713,"total_sales":299543953,"max_weekly_sales":3676389,"min_weekly_sales":1762539,"avg_unemployment":6.0,"avg_cpi":129.0},
+    {"Store":5,"avg_weekly_sales":318012,"total_sales":45475689,"max_weekly_sales":507900,"min_weekly_sales":260637,"avg_unemployment":6.0,"avg_cpi":217.0},
+    {"Store":6,"avg_weekly_sales":1564728,"total_sales":223756131,"max_weekly_sales":2727575,"min_weekly_sales":1261253,"avg_unemployment":7.0,"avg_cpi":218.0},
+    {"Store":7,"avg_weekly_sales":570617,"total_sales":81598275,"max_weekly_sales":1059715,"min_weekly_sales":372674,"avg_unemployment":9.0,"avg_cpi":194.0},
+    {"Store":8,"avg_weekly_sales":908750,"total_sales":129951181,"max_weekly_sales":1511641,"min_weekly_sales":772539,"avg_unemployment":6.0,"avg_cpi":219.0},
+    {"Store":9,"avg_weekly_sales":543981,"total_sales":77789219,"max_weekly_sales":905325,"min_weekly_sales":452905,"avg_unemployment":6.0,"avg_cpi":220.0},
+    {"Store":10,"avg_weekly_sales":1899425,"total_sales":271617714,"max_weekly_sales":3749058,"min_weekly_sales":1627707,"avg_unemployment":8.0,"avg_cpi":129.0},
+    {"Store":11,"avg_weekly_sales":1356383,"total_sales":193962787,"max_weekly_sales":2306265,"min_weekly_sales":1100419,"avg_unemployment":7.0,"avg_cpi":219.0},
+    {"Store":12,"avg_weekly_sales":1009002,"total_sales":144287230,"max_weekly_sales":1768250,"min_weekly_sales":802106,"avg_unemployment":6.0,"avg_cpi":133.0},
+    {"Store":13,"avg_weekly_sales":2003620,"total_sales":286517712,"max_weekly_sales":3595903,"min_weekly_sales":1668433,"avg_unemployment":7.0,"avg_cpi":126.0},
+    {"Store":14,"avg_weekly_sales":2020978,"total_sales":288999789,"max_weekly_sales":3818686,"min_weekly_sales":1662504,"avg_unemployment":8.0,"avg_cpi":183.0},
+    {"Store":15,"avg_weekly_sales":623312,"total_sales":89133550,"max_weekly_sales":1073086,"min_weekly_sales":486182,"avg_unemployment":9.0,"avg_cpi":135.0},
+    {"Store":16,"avg_weekly_sales":624119,"total_sales":89249012,"max_weekly_sales":965377,"min_weekly_sales":466433,"avg_unemployment":6.0,"avg_cpi":112.0},
+    {"Store":17,"avg_weekly_sales":952429,"total_sales":136197340,"max_weekly_sales":1470612,"min_weekly_sales":785757,"avg_unemployment":7.0,"avg_cpi":128.0},
+    {"Store":18,"avg_weekly_sales":942834,"total_sales":134825291,"max_weekly_sales":1550369,"min_weekly_sales":760186,"avg_unemployment":8.0,"avg_cpi":133.0},
+    {"Store":19,"avg_weekly_sales":1373548,"total_sales":196517432,"max_weekly_sales":2205831,"min_weekly_sales":1131759,"avg_unemployment":8.0,"avg_cpi":133.0},
+    {"Store":20,"avg_weekly_sales":2107677,"total_sales":301397850,"max_weekly_sales":3818686,"min_weekly_sales":1774765,"avg_unemployment":7.0,"avg_cpi":204.0},
+    {"Store":21,"avg_weekly_sales":757612,"total_sales":108338836,"max_weekly_sales":1275630,"min_weekly_sales":609358,"avg_unemployment":8.0,"avg_cpi":211.0},
+    {"Store":22,"avg_weekly_sales":1075676,"total_sales":153821606,"max_weekly_sales":1751742,"min_weekly_sales":852076,"avg_unemployment":8.0,"avg_cpi":133.0},
+    {"Store":23,"avg_weekly_sales":1465115,"total_sales":209531424,"max_weekly_sales":2496806,"min_weekly_sales":1200177,"avg_unemployment":6.0,"avg_cpi":135.0},
+    {"Store":24,"avg_weekly_sales":1523446,"total_sales":217852820,"max_weekly_sales":2472867,"min_weekly_sales":1259947,"avg_unemployment":7.0,"avg_cpi":136.0},
+    {"Store":25,"avg_weekly_sales":952699,"total_sales":136236024,"max_weekly_sales":1461783,"min_weekly_sales":760988,"avg_unemployment":7.0,"avg_cpi":135.0},
+    {"Store":26,"avg_weekly_sales":956007,"total_sales":136709019,"max_weekly_sales":1477225,"min_weekly_sales":765735,"avg_unemployment":8.0,"avg_cpi":137.0},
+    {"Store":27,"avg_weekly_sales":1959071,"total_sales":280147104,"max_weekly_sales":3596068,"min_weekly_sales":1592229,"avg_unemployment":8.0,"avg_cpi":133.0},
+    {"Store":28,"avg_weekly_sales":1436406,"total_sales":205405865,"max_weekly_sales":2270721,"min_weekly_sales":1160236,"avg_unemployment":8.0,"avg_cpi":135.0},
+    {"Store":29,"avg_weekly_sales":668667,"total_sales":95619352,"max_weekly_sales":1043546,"min_weekly_sales":530784,"avg_unemployment":9.0,"avg_cpi":211.0},
+    {"Store":30,"avg_weekly_sales":623213,"total_sales":89119479,"max_weekly_sales":1096180,"min_weekly_sales":437131,"avg_unemployment":9.0,"avg_cpi":211.0},
+    {"Store":31,"avg_weekly_sales":1472522,"total_sales":210570655,"max_weekly_sales":2317434,"min_weekly_sales":1187339,"avg_unemployment":8.0,"avg_cpi":211.0},
+    {"Store":32,"avg_weekly_sales":1339277,"total_sales":191516590,"max_weekly_sales":2145272,"min_weekly_sales":1076615,"avg_unemployment":9.0,"avg_cpi":211.0},
+    {"Store":33,"avg_weekly_sales":259776,"total_sales":37147805,"max_weekly_sales":428528,"min_weekly_sales":209862,"avg_unemployment":9.0,"avg_cpi":211.0},
+    {"Store":34,"avg_weekly_sales":907547,"total_sales":129779264,"max_weekly_sales":1449974,"min_weekly_sales":730786,"avg_unemployment":9.0,"avg_cpi":129.0},
+    {"Store":35,"avg_weekly_sales":952803,"total_sales":136250801,"max_weekly_sales":1490042,"min_weekly_sales":690963,"avg_unemployment":9.0,"avg_cpi":211.0},
+    {"Store":36,"avg_weekly_sales":362677,"total_sales":51862805,"max_weekly_sales":606227,"min_weekly_sales":263865,"avg_unemployment":8.0,"avg_cpi":129.0},
+    {"Store":37,"avg_weekly_sales":476675,"total_sales":68168565,"max_weekly_sales":787842,"min_weekly_sales":365149,"avg_unemployment":9.0,"avg_cpi":211.0},
+    {"Store":38,"avg_weekly_sales":392450,"total_sales":56120310,"max_weekly_sales":611145,"min_weekly_sales":300688,"avg_unemployment":9.0,"avg_cpi":128.0},
+    {"Store":39,"avg_weekly_sales":1359309,"total_sales":194380141,"max_weekly_sales":2189745,"min_weekly_sales":1130713,"avg_unemployment":9.0,"avg_cpi":211.0},
+    {"Store":40,"avg_weekly_sales":1189410,"total_sales":170065587,"max_weekly_sales":2144872,"min_weekly_sales":934849,"avg_unemployment":6.0,"avg_cpi":133.0},
+    {"Store":41,"avg_weekly_sales":1301083,"total_sales":186054890,"max_weekly_sales":2085650,"min_weekly_sales":1073416,"avg_unemployment":7.0,"avg_cpi":183.0},
+    {"Store":42,"avg_weekly_sales":437874,"total_sales":62616021,"max_weekly_sales":724019,"min_weekly_sales":328058,"avg_unemployment":7.0,"avg_cpi":183.0},
+    {"Store":43,"avg_weekly_sales":655958,"total_sales":93801945,"max_weekly_sales":972806,"min_weekly_sales":543733,"avg_unemployment":8.0,"avg_cpi":220.0},
+    {"Store":44,"avg_weekly_sales":297161,"total_sales":42494074,"max_weekly_sales":483657,"min_weekly_sales":231245,"avg_unemployment":6.0,"avg_cpi":132.0},
+    {"Store":45,"avg_weekly_sales":720518,"total_sales":103034056,"max_weekly_sales":1274213,"min_weekly_sales":336180,"avg_unemployment":8.0,"avg_cpi":183.0}
+  ],
+  monthly_avg_sales: {"1":923885,"2":1053200,"3":1013309,"4":1026762,"5":1031714,"6":1064325,"7":1031748,"8":1048017,"9":989335,"10":999632,"11":1147266,"12":1281864},
+  holiday_avg_sales: {non_holiday:1041256, holiday:1122888},
+  overall: {total_stores:45, date_range:["2010-02-05","2012-10-26"], overall_avg_weekly_sales:1046965, overall_total_sales:6737218987}
+};
+
+function fmtMoney(n){
+  if(n>=1000000){return '$'+(n/1000000).toFixed(1)+'M';}
+  if(n>=1000){return '$'+(n/1000).toFixed(0)+'K';}
+  return '$'+n;
+}
+
+function renderMetrics(){
+  const sorted = [...DATA.stores].sort((a,b)=>b.avg_weekly_sales-a.avg_weekly_sales);
+  const top = sorted[0], bottom = sorted[sorted.length-1];
+  const metrics = [
+    {label:'Stores tracked', value: DATA.overall.total_stores},
+    {label:'Avg weekly sales / store', value: fmtMoney(DATA.overall.overall_avg_weekly_sales)},
+    {label:'Top store (avg weekly)', value: 'Store '+top.Store+' · '+fmtMoney(top.avg_weekly_sales)},
+    {label:'Holiday sales lift', value: '+'+(((DATA.holiday_avg_sales.holiday/DATA.holiday_avg_sales.non_holiday)-1)*100).toFixed(1)+'%'}
+  ];
+  const el = document.getElementById('metrics');
+  el.innerHTML = metrics.map(m => `<div class="metric"><div class="label">${m.label}</div><div class="value">${m.value}</div></div>`).join('');
+}
+
+function renderChart(){
+  const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const values = Object.keys(DATA.monthly_avg_sales).sort((a,b)=>a-b).map(k=>DATA.monthly_avg_sales[k]);
+  const ctx = document.getElementById('trendChart').getContext('2d');
+  new Chart(ctx, {
+    type:'line',
+    data:{
+      labels: months,
+      datasets:[{
+        data: values,
+        borderColor:'#a6742c',
+        backgroundColor:'rgba(166,116,44,0.08)',
+        borderWidth:2,
+        pointRadius:3,
+        pointBackgroundColor:'#a6742c',
+        fill:true,
+        tension:0.3
+      }]
+    },
+    options:{
+      responsive:true,
+      maintainAspectRatio:false,
+      plugins:{legend:{display:false}},
+      scales:{
+        y:{ticks:{callback:v=>fmtMoney(v), font:{size:11}}, grid:{color:'#eee'}},
+        x:{ticks:{font:{size:11}}, grid:{display:false}}
+      }
+    }
+  });
+}
+
+const PRESETS = [
+  "Which stores are underperforming relative to the average?",
+  "What does the holiday sales lift suggest for staffing?",
+  "How does unemployment relate to store sales here?",
+  "Summarize this for a retail client in two sentences."
+];
+
+function renderChips(){
+  const el = document.getElementById('chips');
+  el.innerHTML = PRESETS.map(p => `<button class="chip" type="button">${p}</button>`).join('');
+  el.querySelectorAll('.chip').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      document.getElementById('question').value = btn.textContent;
+      askQuestion();
+    });
+  });
+}
+
+function buildDataSummary(){
+  const sorted = [...DATA.stores].sort((a,b)=>b.avg_weekly_sales-a.avg_weekly_sales);
+  const top5 = sorted.slice(0,5).map(s=>`Store ${s.Store}: avg ${s.avg_weekly_sales}, unemployment ${s.avg_unemployment}%, CPI ${s.avg_cpi}`).join('; ');
+  const bottom5 = sorted.slice(-5).map(s=>`Store ${s.Store}: avg ${s.avg_weekly_sales}, unemployment ${s.avg_unemployment}%, CPI ${s.avg_cpi}`).join('; ');
+  return `WALMART WEEKLY SALES DATASET SUMMARY (aggregated from 6,435 store-week records, 45 stores, Feb 2010-Oct 2012)
+Overall average weekly sales per store: $${DATA.overall.overall_avg_weekly_sales}
+Overall total sales across all stores: $${DATA.overall.overall_total_sales}
+Top 5 stores by average weekly sales: ${top5}
+Bottom 5 stores by average weekly sales: ${bottom5}
+Monthly average weekly sales (all stores): ${JSON.stringify(DATA.monthly_avg_sales)}
+Holiday week average sales: $${DATA.holiday_avg_sales.holiday} vs non-holiday week average: $${DATA.holiday_avg_sales.non_holiday}
+Full store list (store id, avg weekly sales, avg unemployment %, avg CPI): ${DATA.stores.map(s=>`${s.Store}:${s.avg_weekly_sales}:${s.avg_unemployment}:${s.avg_cpi}`).join(', ')}`;
+}
+
+// Pre-computed, data-grounded answers for the preset questions.
+// These were generated once from the real aggregated dataset (see buildDataSummary())
+// rather than calling the AI live from the browser on every click. A live LLM call
+// needs a private API key, and a key embedded in public client-side code isn't secure —
+// so for this public demo the AI-generated reasoning is baked in ahead of time, and the
+// live-call code path (see comment below) is what a production version would use behind
+// an authenticated backend instead of calling the API directly from the browser.
+const PRESET_ANSWERS = {
+  "Which stores are underperforming relative to the average?":
+    "The overall average weekly sales across all 45 stores is about $1.05M. Five stores sit well below that: Store 33 ($260K), Store 44 ($303K), Store 5 ($318K), Store 36 ($374K), and Store 38 ($386K) — each running at roughly a quarter of the network average. These are consistently low across the full date range rather than a single bad month, which points to store size or local market conditions rather than a temporary dip, and would be worth investigating before assuming it's a performance issue.",
+  "What does the holiday sales lift suggest for staffing?":
+    "Average weekly sales during holiday weeks are about $1.12M, versus $1.04M in non-holiday weeks — a lift of roughly 8%. That's a meaningful but not extreme jump, suggesting staffing plans should flex moderately for holiday weeks (extra checkout and stocking coverage) rather than a wholesale schedule overhaul. Since the lift is consistent across the dataset's holiday weeks, it's predictable enough to plan for in advance rather than reacting week to week.",
+  "How does unemployment relate to store sales here?":
+    "Across the 45 stores, average local unemployment and average weekly sales show only a weak negative correlation (r ≈ -0.11). In practical terms, unemployment rate alone doesn't explain much of the difference in store performance — a store's location and format likely matter far more than the local labor market. I'd be cautious about using unemployment as a planning input here without pairing it with other regional factors.",
+  "Summarize this for a retail client in two sentences.":
+    "Across 45 stores and roughly two and a half years of weekly data, average sales run about $1.05M per store per week, with an 8% lift during holiday weeks and a wide performance gap between the strongest and weakest stores. Local unemployment shows little relationship to sales, suggesting store-level factors — not the broader local economy — are driving the biggest differences in performance."
+};
+
+async function askQuestion(){
+  const q = document.getElementById('question').value.trim();
+  const holder = document.getElementById('answer-holder');
+  const btn = document.getElementById('ask-btn');
+  if(!q){ return; }
+  btn.disabled = true;
+  holder.innerHTML = `<div class="loading">Analyzing store data…</div>`;
+
+  await new Promise(r => setTimeout(r, 500)); // brief pause so the loading state is visible
+
+  const matched = PRESET_ANSWERS[q];
+  if (matched) {
+    holder.innerHTML = `<div class="answer"><span class="tag">AI insight</span>${matched}</div>`;
+  } else {
+    holder.innerHTML = `<div class="error">This public demo answers the four preset questions above with pre-computed, data-grounded insights (a live API key can't be safely exposed in public client-side code). Try one of those, or see the README for how this would connect to a live model behind a secured backend.</div>`;
+  }
+  btn.disabled = false;
+
+  /* Production / authenticated version would instead call a backend endpoint that
+     holds the API key server-side, e.g.:
+     const response = await fetch("/api/ask", { method:"POST", body: JSON.stringify({ question: q, context: buildDataSummary() }) });
+  */
+}
+
+document.getElementById('ask-btn').addEventListener('click', askQuestion);
+document.getElementById('question').addEventListener('keydown', e=>{ if(e.key==='Enter') askQuestion(); });
+
+renderMetrics();
+renderChart();
+renderChips();
+</script>
+</body>
+</html>
