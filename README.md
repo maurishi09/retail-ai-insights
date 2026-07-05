@@ -2,8 +2,6 @@
 
 A small AI-powered tool built on top of a Walmart weekly sales dataset (45 stores, Feb 2010–Oct 2012). Instead of reading a static dashboard, a business user can type a plain-English question — "which stores are underperforming?", "what does the holiday sales lift suggest for staffing?" — and get an answer grounded in the actual data.
 
-**Live demo:** https://maurishi09.github.io/retail-ai-insights/
-
 ## Why I built this
 
 My background is in data analytics — SQL, Python, Power BI, dashboards. This project was me pushing one step further: not just analyzing data, but building something a non-technical stakeholder could actually use to ask questions of it, powered by an AI model.
